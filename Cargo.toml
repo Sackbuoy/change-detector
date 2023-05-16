@@ -1,0 +1,23 @@
+[package]
+name = "change-detector"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+env_logger = "0.10.0"
+lettre = { version = "0.10.4", default-features = false, features = ["smtp-transport", "tokio1-rustls-tls", "hostname", "builder"] }
+log = { version = "0.4.17", features = ["kv_unstable"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+thirtyfour = "0.31.0"
+tokio = { version = "1.28.0" }
+tokio-retry = "0.3.0"
+
+[profile.release]
+opt-level = 3
+
+[[bin]]
+name = "change-detector"
+path = "src/main.rs"

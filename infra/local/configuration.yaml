@@ -1,0 +1,15 @@
+url: "http://example.com"
+poll_interval: 5 # in seconds
+alerting:
+  smtp:
+    host: "smtp.gmail.com"
+    username: "username" # your email as username for stmp
+    password: "password"
+    emails:
+      - "example1@gmail.com"
+      - "example2@gmail.com"
+  sms:
+    account_id: "ass"
+    auth_token: "ass"
+    numbers: 
+      - "8881234567"

@@ -1,0 +1,8 @@
+version: '3.7'
+
+services:
+  casenet:
+    image: "change-detector"
+    container_name: "container-name"
+    volumes:
+      - ${PWD}/configuration.yaml:/opt/change-detector/configuration.yaml
