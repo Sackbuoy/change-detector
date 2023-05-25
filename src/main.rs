@@ -4,10 +4,10 @@ mod pkg;
 #[macro_use]
 extern crate log;
 
-use internal::poller::Poller;
 use internal::configuration::Configuration;
-use pkg::client::Client;
+use internal::poller::Poller;
 use pkg::alerting::Notifier;
+use pkg::client::Client;
 use pkg::webdriver::{InternalWebDriver, WebDrivers};
 use std::error::Error;
 use std::time::Duration;
@@ -30,11 +30,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // create poller that will call the client
     let cache_file_path = "current.html".to_owned();
-    let mut poller = Poller::new(&poll_client,
-         &cache_file_path,
-         notifier,
-         Duration::from_secs(config.poll_interval),
-         config.certainty_level)?;
+    let mut poller = Poller::new(
+        &poll_client,
+        &cache_file_path,
+        notifier,
+        Duration::from_secs(config.poll_interval),
+        config.certainty_level,
+    )?;
 
     poller.poll().await?;
 
@@ -42,4 +44,3 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-

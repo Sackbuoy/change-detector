@@ -1,10 +1,10 @@
 use crate::internal::configuration::Configuration;
-use std::error::Error;
-use thirtyfour::{By, DesiredCapabilities, WebDriver};
-use tokio_retry::Retry;
-use tokio_retry::strategy::ExponentialBackoff;
-use thirtyfour::extensions::query::ElementQueryable;
 use crate::pkg::webdriver::InternalWebDriver;
+use std::error::Error;
+use thirtyfour::extensions::query::ElementQueryable;
+use thirtyfour::{By, DesiredCapabilities, WebDriver};
+use tokio_retry::strategy::ExponentialBackoff;
+use tokio_retry::Retry;
 
 #[derive(Debug)]
 pub struct Client<'a> {
@@ -13,8 +13,14 @@ pub struct Client<'a> {
 }
 
 impl Client<'_> {
-    pub fn new<'a>(config: &'a Configuration, driver: &'a InternalWebDriver) -> Result<Client<'a>, Box<dyn Error>> {
-        let client = Client { url: &config.url, _driver: driver };
+    pub fn new<'a>(
+        config: &'a Configuration,
+        driver: &'a InternalWebDriver,
+    ) -> Result<Client<'a>, Box<dyn Error>> {
+        let client = Client {
+            url: &config.url,
+            _driver: driver,
+        };
 
         Ok(client)
     }
@@ -36,7 +42,6 @@ impl Client<'_> {
     }
 
     pub async fn query(&self) -> Result<String, Box<dyn Error>> {
-
         let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
 
         let driver = Retry::spawn(retry_strategy, Self::connect_chrome).await?;
@@ -45,17 +50,23 @@ impl Client<'_> {
             Ok(()) => {
                 info!("Fetched URL {}", self.url);
                 debug!("Driver status: {:?}", driver.handle.status().await?);
-            },
+            }
             Err(e) => {
                 error!("Failed to navigate to URL: {}", e.to_string())
-            },
+            }
         }
 
         // so driver.find() resulted in the dynamically loaded content of the page
         // not showing up a lot of the time, for some reason this works much better
         let element_query = driver.query(By::Tag("body"));
-        let body = element_query.first().await.expect("Failed to get page body");
-        let body_text = body.inner_html().await.expect("Failed to get page body as text");
+        let body = element_query
+            .first()
+            .await
+            .expect("Failed to get page body");
+        let body_text = body
+            .inner_html()
+            .await
+            .expect("Failed to get page body as text");
 
         // close Webdriver Client
         match driver.quit().await {
@@ -63,8 +74,7 @@ impl Client<'_> {
             Err(e) => {
                 error!("Failed to quit webdriver: {}", e.to_string());
                 Err(Box::new(e))
-            },
+            }
         }
     }
-
 }

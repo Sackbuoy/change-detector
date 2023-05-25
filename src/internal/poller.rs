@@ -1,6 +1,6 @@
 use crate::internal::response_cache::{new_response_cache, ResponseCache};
-use crate::pkg::client::Client;
 use crate::pkg::alerting::Notifier;
+use crate::pkg::client::Client;
 use log::info;
 use std::error::Error;
 use std::thread;
@@ -37,7 +37,7 @@ impl Poller<'_> {
 
     pub async fn poll(&mut self) -> Result<(), Box<dyn Error>> {
         // storing the past several responses because fuck
-        // i.e. If i find a change, I try again <certainty_level> times to make sure bc 
+        // i.e. If i find a change, I try again <certainty_level> times to make sure bc
         // this page is unreliable af
         let mut past_responses: Vec<String> = Vec::new();
 
@@ -47,12 +47,10 @@ impl Poller<'_> {
 
             info!("polling...");
             let new_response: String = match self.client.query().await {
-                Ok(val) => {
-                    val
-                },
+                Ok(val) => val,
                 Err(e) => {
                     error!("Failed to connect to webpage: {}", e.to_string());
-                    continue
+                    continue;
                 }
             };
 
@@ -72,17 +70,22 @@ impl Poller<'_> {
             }
 
             let change_detected: bool = match self.response_cache.to_string() {
-                Ok(cache) => {
-                    cache != new_response
-                },
+                Ok(cache) => cache != new_response,
                 Err(e) => {
-                    error!("Failed to read response cache file as string: {}", e.to_string());
-                    continue
+                    error!(
+                        "Failed to read response cache file as string: {}",
+                        e.to_string()
+                    );
+                    continue;
                 }
             };
 
             let change_matches_past = if change_detected {
-                matches_past_responses(&new_response, &past_responses, self.certainty_level as usize)
+                matches_past_responses(
+                    &new_response,
+                    &past_responses,
+                    self.certainty_level as usize,
+                )
             } else {
                 debug!("Change found, but could not verified within desired certainty level");
                 false
@@ -93,13 +96,21 @@ impl Poller<'_> {
                 info!("Change has been found within the desired certainty level");
                 self.response_cache.update(&new_response)?;
                 let body_string = format!("Visit {} for more details", self.client.url);
-                self.notifier.send_emails(&"recipient".to_string(), &"Change detector found an update".to_string(), body_string)?;
-            } 
+                self.notifier.send_emails(
+                    &"recipient".to_string(),
+                    &"Change detector found an update".to_string(),
+                    body_string,
+                )?;
+            }
         }
     }
 }
 
-fn matches_past_responses(new_response: &String, past_responses: &Vec<String>, certainty_level: usize) -> bool {
+fn matches_past_responses(
+    new_response: &String,
+    past_responses: &Vec<String>,
+    certainty_level: usize,
+) -> bool {
     if past_responses.len() < certainty_level {
         warn!("Change found before it could be verified at desired certainty level");
         return false;
@@ -115,5 +126,3 @@ fn matches_past_responses(new_response: &String, past_responses: &Vec<String>, c
     }
     return true;
 }
-
-
