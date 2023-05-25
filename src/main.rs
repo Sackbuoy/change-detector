@@ -4,9 +4,11 @@ mod pkg;
 #[macro_use]
 extern crate log;
 
-use internal::errors::log_wrapped_err;
-use internal::{configuration, poller};
-use pkg::{client, alerting, webdriver};
+use internal::poller::Poller;
+use internal::configuration::Configuration;
+use pkg::client::Client;
+use pkg::alerting::Notifier;
+use pkg::webdriver::{InternalWebDriver, WebDrivers};
 use std::error::Error;
 use std::time::Duration;
 
@@ -16,42 +18,27 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config_file_path = "configuration.yaml";
     env_logger::init();
 
-    // initialize config
-    let config = match configuration::new_configuration(&config_file_path) {
-        Ok(config) => config,
-        Err(e) => {
-            return log_wrapped_err(e);
-        }
-    };
-
-    // create client to query endpoint
-    let poll_client = match client::new_client(&config) {
-        Ok(val) => val,
-        Err(e) => return log_wrapped_err(e),
-    };
-
-    // store file in pwd
-    let cache_file_path = "current.html".to_owned();
-    let notifier = match alerting::Notifier::new_notifier(&config.alerting) {
-        Ok(val) => val,
-        Err(e) => return log_wrapped_err(e),
-    };
+    let config = Configuration::new(&config_file_path)?;
 
     info!("Initializing webdriver");
-    let mut driver = match webdriver::WebDriver::start_chrome().await {
-        Ok(val) => val,
-        Err(e) => return log_wrapped_err(e),  
-    };
+    let mut web_driver = InternalWebDriver::start(WebDrivers::Chrome).await?;
+
+    let poll_client = Client::new(&config, &web_driver)?;
+
+    // store file in pwd
+    let notifier = Notifier::new(&config.alerting)?;
 
     // create poller that will call the client
-    let mut poller = match poller::new_poller(&poll_client, &cache_file_path, notifier, Duration::from_secs(config.poll_interval)) {
-        Ok(val) => val,
-        Err(e) => return log_wrapped_err(e),
-    };
+    let cache_file_path = "current.html".to_owned();
+    let mut poller = Poller::new(&poll_client,
+         &cache_file_path,
+         notifier,
+         Duration::from_secs(config.poll_interval),
+         config.certainty_level)?;
 
     poller.poll().await?;
 
-    driver.stop_webdriver()?;
+    web_driver.stop()?;
 
     Ok(())
 }

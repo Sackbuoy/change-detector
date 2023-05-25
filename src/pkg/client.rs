@@ -1,22 +1,24 @@
-use crate::internal::{configuration::Configuration, errors::wrapped_err};
+use crate::internal::configuration::Configuration;
 use std::error::Error;
-use thirtyfour::{DesiredCapabilities, WebDriver, TimeoutConfiguration};
-use std::time::Duration;
+use thirtyfour::{By, DesiredCapabilities, WebDriver};
 use tokio_retry::Retry;
 use tokio_retry::strategy::ExponentialBackoff;
+use thirtyfour::extensions::query::ElementQueryable;
+use crate::pkg::webdriver::InternalWebDriver;
 
 #[derive(Debug)]
 pub struct Client<'a> {
+    _driver: &'a InternalWebDriver,
     pub url: &'a String,
 }
 
-pub fn new_client(config: &Configuration) -> Result<Client, Box<dyn Error>> {
-    let client = Client { url: &config.url };
-
-    Ok(client)
-}
-
 impl Client<'_> {
+    pub fn new<'a>(config: &'a Configuration, driver: &'a InternalWebDriver) -> Result<Client<'a>, Box<dyn Error>> {
+        let client = Client { url: &config.url, _driver: driver };
+
+        Ok(client)
+    }
+
     async fn connect_chrome() -> Result<WebDriver, Box<dyn Error>> {
         // assumes the existence of chrome on the system
         let mut caps = DesiredCapabilities::chrome();
@@ -26,6 +28,7 @@ impl Client<'_> {
         caps.add_chrome_arg("--enable-automation")?; // ^^
         caps.set_disable_dev_shm_usage()?; // ^^
 
+        // TODO: move this to config
         match WebDriver::new("http://127.0.0.1:9515", caps).await {
             Ok(val) => Ok(val),
             Err(e) => Err(Box::new(e)),
@@ -38,34 +41,28 @@ impl Client<'_> {
 
         let driver = Retry::spawn(retry_strategy, Self::connect_chrome).await?;
 
-        let timeouts = TimeoutConfiguration::new(Some(Duration::new(30, 0)), Some(Duration::new(30, 0)), Some(Duration::new(30, 0)));
-        driver.update_timeouts(timeouts).await?;
-
         match driver.goto(self.url).await {
             Ok(()) => {
                 info!("Fetched URL {}", self.url);
+                debug!("Driver status: {:?}", driver.handle.status().await?);
             },
             Err(e) => {
-                let err_string = format!("Failed to navigate to URL: {}", e.to_string());
-                return wrapped_err(err_string);
+                error!("Failed to navigate to URL: {}", e.to_string())
             },
         }
 
-        // get html
-        let html = match driver.source().await {
-            Ok(val) => val,
-            Err(e) => {
-                let err_string = format!("Failed to get page source: {}", e.to_string());
-                return wrapped_err(err_string);
-                },
-        };
+        // so driver.find() resulted in the dynamically loaded content of the page
+        // not showing up a lot of the time, for some reason this works much better
+        let element_query = driver.query(By::Tag("body"));
+        let body = element_query.first().await.expect("Failed to get page body");
+        let body_text = body.inner_html().await.expect("Failed to get page body as text");
 
         // close Webdriver Client
         match driver.quit().await {
-            Ok(()) => return Ok(html),
+            Ok(()) => return Ok(body_text),
             Err(e) => {
-                let err_string = format!("Failed to quit webdriver: {}", e.to_string());
-                return wrapped_err(err_string);
+                error!("Failed to quit webdriver: {}", e.to_string());
+                Err(Box::new(e))
             },
         }
     }

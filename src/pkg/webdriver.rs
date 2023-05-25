@@ -1,32 +1,54 @@
 use std::error::Error;
 use std::process::{Child, Command};
 
-use crate::internal::errors::wrapped_err;
-
-pub struct WebDriver {
-    process: Child,
+// TODO: gecko support
+pub enum WebDrivers {
+    Chrome,
+    _Gecko,
 }
 
-impl WebDriver {
-    pub async fn start_chrome() -> Result<WebDriver, Box<dyn Error>> {
+#[derive(Debug)]
+pub enum InternalWebDriver {
+    Chrome(Child),
+    _Gecko(Child),
+}
+
+impl InternalWebDriver {
+    pub async fn start(driver_type: WebDrivers) -> Result<InternalWebDriver, Box<dyn Error>> {
+        match driver_type {
+            WebDrivers::Chrome => Self::start_chrome().await,
+            WebDrivers::_Gecko => Self::start_gecko().await,
+        }
+    }
+
+    async fn start_chrome() -> Result<InternalWebDriver, Box<dyn Error>> {
         info!("Starting Chromedriver...");
         let child = Command::new("chromedriver")
             .arg("--disable-dev-shm-usage")
             .spawn()
             .expect("Failed to start chromedriver");
 
-        let driver = WebDriver { process: child };
+        let driver = Self::Chrome(child);
         info!("Chrome successfully initialized");
         Ok(driver)
     }
 
-    pub fn stop_webdriver(&mut self) -> Result<(), Box<dyn Error>> {
-        match self.process.kill() {
-            Ok(()) => {
-                info!("Successfully killed webdriver");
-                Ok(())
-            }
-            Err(e) => return wrapped_err(e.to_string()),
+    async fn start_gecko() -> Result<InternalWebDriver, Box<dyn Error>> {
+        info!("Starting Geckodriver...");
+        let child = Command::new("geckodriver")
+            .arg("--disable-dev-shm-usage")
+            .spawn()
+            .expect("Failed to start chromedriver");
+
+        let driver = Self::Chrome(child);
+        info!("Chrome successfully initialized");
+        Ok(driver)
+    }
+
+    pub fn stop(&mut self) -> Result<(), Box<dyn Error>> {
+        match self {
+            Self::Chrome(process) => Ok(process.kill()?),
+            Self::_Gecko(process) => Ok(process.kill()?),
         }
     }
 }

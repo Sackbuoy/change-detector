@@ -1,5 +1,6 @@
 url: "http://example.com"
 poll_interval: 5 # in seconds
+certainty_level: 5 # num times a change needs to be seen to alert
 alerting:
   smtp:
     host: "smtp.gmail.com"
@@ -8,8 +9,8 @@ alerting:
     emails:
       - "example1@gmail.com"
       - "example2@gmail.com"
-  sms:
-    account_id: "ass"
-    auth_token: "ass"
+  sms: # sms not supported yet
+    account_id: "ugh"
+    auth_token: "agh"
     numbers: 
       - "8881234567"

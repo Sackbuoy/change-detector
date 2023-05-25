@@ -15,6 +15,7 @@ pub struct Emailer<'a> {
     pub emails: &'a Vec<String>,
 }
 
+// TODO: implement this
 pub struct Texter {
     pub _placeholder: String,
 }
@@ -41,7 +42,7 @@ pub struct SmsConfig {
 }
 
 impl Notifier<'_> {
-    pub fn new_notifier(config: &AlertingConfig) -> Result<Notifier, Box<dyn Error>> {
+    pub fn new(config: &AlertingConfig) -> Result<Notifier, Box<dyn Error>> {
         Ok(Notifier {
             emailer: Self::new_mailer(
                 &config.smtp.host,
@@ -79,7 +80,7 @@ impl Notifier<'_> {
                     info!("Target has been notified");
                 }
                 Err(e) => {
-                    warn!("Failed to notify {} : {}", email, e.to_string());
+                    error!("Failed to notify {}", e.to_string());
                 }
             }
         }
@@ -95,10 +96,8 @@ impl Notifier<'_> {
         let smtp_creds = Credentials::new(uname.to_owned(), pw.to_owned());
 
         // Open a remote connection to gmail
-        let mailer = SmtpTransport::relay(&host)
-            .unwrap()
-            .credentials(smtp_creds)
-            .build();
+        let transport = SmtpTransport::relay(&host)?;
+        let mailer = transport.credentials(smtp_creds).build();
 
         Ok(Emailer { mailer, emails })
     }
