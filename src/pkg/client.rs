@@ -37,7 +37,10 @@ impl Client<'_> {
         // TODO: move this to config
         match WebDriver::new("http://127.0.0.1:9515", caps).await {
             Ok(val) => Ok(val),
-            Err(e) => Err(Box::new(e)),
+            Err(e) => {
+                error!("Failed to initialize Webdriver: {}", e.to_string());
+                Err(Box::new(e))
+            }
         }
     }
 

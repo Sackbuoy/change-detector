@@ -49,8 +49,8 @@ impl Poller<'_> {
             let new_response: String = match self.client.query().await {
                 Ok(val) => val,
                 Err(e) => {
-                    error!("Failed to connect to webpage: {}", e.to_string());
-                    continue;
+                    error!("Failed to connect to query page: {}", e.to_string());
+                    return Err(e); // at least for now, I want this to complete so the service can restart
                 }
             };
 

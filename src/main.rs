@@ -38,9 +38,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         config.certainty_level,
     )?;
 
-    poller.poll().await?;
-
-    web_driver.stop()?;
+    match poller.poll().await {
+        Ok(_) => {
+            info!("Poller exited without an error");
+            web_driver.stop()?;
+        }
+        Err(_) => web_driver.stop()?,
+    }
 
     Ok(())
 }
