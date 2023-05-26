@@ -1,0 +1,10 @@
+[package]
+name = "urlparse"
+version = "0.7.3"
+authors = ["Yutaka Kamei"]
+description = "This is a URL parsing library like urllib.parse in Python3.x."
+documentation = "https://yykamei.github.io/rust-urlparse"
+repository = "https://github.com/yykamei/rust-urlparse"
+license = "MIT"
+keywords = ["url", "uri", "urllib", "urlparse"]
+readme = "README.md"
