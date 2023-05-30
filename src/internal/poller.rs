@@ -7,7 +7,7 @@ use std::thread;
 use std::time;
 
 pub struct Poller<'a> {
-    client: &'a Client<'a>,
+    client: &'a mut Client<'a>,
     response_cache: ResponseCache<'a>,
     notifier: Notifier<'a>,
     poll_interval: time::Duration,
@@ -16,7 +16,7 @@ pub struct Poller<'a> {
 
 impl Poller<'_> {
     pub fn new<'a>(
-        client: &'a Client,
+        client: &'a mut Client<'a>,
         cache_file_path: &'a String,
         notifier: Notifier<'a>,
         poll_interval: time::Duration,
@@ -50,7 +50,7 @@ impl Poller<'_> {
                 Ok(val) => val,
                 Err(e) => {
                     error!("Failed to connect to query page: {}", e.to_string());
-                    return Err(e); // at least for now, I want this to complete so the service can restart
+                    continue;
                 }
             };
 

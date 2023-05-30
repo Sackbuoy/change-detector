@@ -2,19 +2,22 @@ use std::error::Error;
 use std::process::{Child, Command};
 
 // TODO: gecko support
+#[derive(Debug)]
 pub enum WebDrivers {
     Chrome,
     _Gecko,
 }
 
 #[derive(Debug)]
-pub enum InternalWebDriver {
-    Chrome(Child),
-    _Gecko(Child),
+pub struct InternalWebDriver {
+    // Chrome(Child),
+    // _Gecko(Child),
+    process: Child,
+    web_driver_type: WebDrivers,
 }
 
 impl InternalWebDriver {
-    pub async fn start(driver_type: WebDrivers) -> Result<InternalWebDriver, Box<dyn Error>> {
+    pub async fn start(driver_type: &WebDrivers) -> Result<InternalWebDriver, Box<dyn Error>> {
         match driver_type {
             WebDrivers::Chrome => Self::start_chrome().await,
             WebDrivers::_Gecko => Self::start_gecko().await,
@@ -28,7 +31,11 @@ impl InternalWebDriver {
             .spawn()
             .expect("Failed to start chromedriver");
 
-        let driver = Self::Chrome(child);
+        // let driver = Self::Chrome(child);
+        let driver = InternalWebDriver {
+            process: child,
+            web_driver_type: WebDrivers::Chrome,
+        };
         info!("Chrome successfully initialized");
         Ok(driver)
     }
@@ -36,19 +43,23 @@ impl InternalWebDriver {
     async fn start_gecko() -> Result<InternalWebDriver, Box<dyn Error>> {
         info!("Starting Geckodriver...");
         let child = Command::new("geckodriver")
-            .arg("--disable-dev-shm-usage")
             .spawn()
-            .expect("Failed to start chromedriver");
+            .expect("Failed to start geckodriver");
 
-        let driver = Self::Chrome(child);
-        info!("Chrome successfully initialized");
+        let driver = InternalWebDriver {
+            process: child,
+            web_driver_type: WebDrivers::_Gecko,
+        };
+        info!("Gecko successfully initialized");
         Ok(driver)
     }
 
+    pub async fn restart(&mut self) -> Result<InternalWebDriver, Box<dyn Error>> {
+        self.stop()?;
+        Self::start(&self.web_driver_type).await
+    }
+
     pub fn stop(&mut self) -> Result<(), Box<dyn Error>> {
-        match self {
-            Self::Chrome(process) => Ok(process.kill()?),
-            Self::_Gecko(process) => Ok(process.kill()?),
-        }
+        Ok(self.process.kill()?)
     }
 }

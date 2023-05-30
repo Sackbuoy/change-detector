@@ -21,9 +21,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config = Configuration::new(&config_file_path)?;
 
     info!("Initializing webdriver");
-    let mut web_driver = InternalWebDriver::start(WebDrivers::Chrome).await?;
+    let mut web_driver = InternalWebDriver::start(&WebDrivers::Chrome).await?;
 
-    let poll_client = Client::new(&config, &web_driver)?;
+    let mut poll_client = Client::new(&config, &mut web_driver)?;
 
     // store file in pwd
     let notifier = Notifier::new(&config.alerting)?;
@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // create poller that will call the client
     let cache_file_path = "current.html".to_owned();
     let mut poller = Poller::new(
-        &poll_client,
+        &mut poll_client,
         &cache_file_path,
         notifier,
         Duration::from_secs(config.poll_interval),
@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     match poller.poll().await {
         Ok(_) => {
             info!("Poller exited without an error");
-            web_driver.stop()?;
+            web_driver.stop()?
         }
         Err(_) => web_driver.stop()?,
     }

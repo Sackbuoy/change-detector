@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::path::Path;
 
 #[derive(Debug)]
 pub struct ResponseCache<'a> {
@@ -10,6 +11,10 @@ pub struct ResponseCache<'a> {
 }
 
 pub fn new_response_cache<'a>(file_path: &'a String) -> Result<ResponseCache, Box<dyn Error>> {
+    if let true = Path::new(file_path).exists() {
+        fs::remove_file(file_path)?;
+    }
+
     // this works on mac, other platforms might need to set some options
     let value = OpenOptions::new()
         .read(true)

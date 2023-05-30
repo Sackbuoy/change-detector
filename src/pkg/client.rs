@@ -8,14 +8,14 @@ use tokio_retry::Retry;
 
 #[derive(Debug)]
 pub struct Client<'a> {
-    _driver: &'a InternalWebDriver,
+    pub _driver: &'a mut InternalWebDriver,
     pub url: &'a String,
 }
 
 impl Client<'_> {
     pub fn new<'a>(
         config: &'a Configuration,
-        driver: &'a InternalWebDriver,
+        driver: &'a mut InternalWebDriver,
     ) -> Result<Client<'a>, Box<dyn Error>> {
         let client = Client {
             url: &config.url,
@@ -44,10 +44,16 @@ impl Client<'_> {
         }
     }
 
-    pub async fn query(&self) -> Result<String, Box<dyn Error>> {
-        let retry_strategy = ExponentialBackoff::from_millis(10).take(3);
+    pub async fn query(&mut self) -> Result<String, Box<dyn Error>> {
+        let retry_strategy = ExponentialBackoff::from_millis(100).take(3);
 
-        let driver = Retry::spawn(retry_strategy, Self::connect_chrome).await?;
+        let driver = match Retry::spawn(retry_strategy, Self::connect_chrome).await {
+            Ok(val) => val,
+            Err(e) => {
+                self._driver.restart().await?;
+                return Err(e);
+            }
+        };
 
         match driver.goto(self.url).await {
             Ok(()) => {
