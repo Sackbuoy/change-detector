@@ -35,6 +35,7 @@ impl Client<'_> {
         caps.set_disable_dev_shm_usage()?; // ^^
 
         // TODO: move this to config
+        #[allow(unreachable_code)]
         match WebDriver::new("http://127.0.0.1:9515", caps).await {
             Ok(val) => Ok(val),
             Err(e) => {
