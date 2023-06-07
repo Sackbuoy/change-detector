@@ -18,7 +18,7 @@ impl Configuration {
         let mut err_string = format!("Could not open path {}", file_path);
         let file = File::open(file_path).expect(&err_string);
 
-        err_string = format!("Could not initialize config");
+        err_string = "Could not initialize config".to_string();
         let config: Configuration = serde_yaml::from_reader(file).expect(&err_string);
 
         Ok(config)

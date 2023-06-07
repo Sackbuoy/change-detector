@@ -10,7 +10,7 @@ pub struct ResponseCache<'a> {
     value: File,
 }
 
-pub fn new_response_cache<'a>(file_path: &'a String) -> Result<ResponseCache, Box<dyn Error>> {
+pub fn new_response_cache(file_path: &String) -> Result<ResponseCache, Box<dyn Error>> {
     if let true = Path::new(file_path).exists() {
         fs::remove_file(file_path)?;
     }
@@ -25,17 +25,17 @@ pub fn new_response_cache<'a>(file_path: &'a String) -> Result<ResponseCache, Bo
         .expect("Error creating response cache");
 
     Ok(ResponseCache {
-        file_path: &file_path,
+        file_path,
         value,
     })
 }
 
 impl ResponseCache<'_> {
     pub fn is_empty(&self) -> Result<bool, Box<dyn Error>> {
-        return match fs::read(self.file_path) {
+        match fs::read(self.file_path) {
             Ok(val) => Ok(val.len() == 0),
             Err(e) => Err(Box::new(e)),
-        };
+        }
     }
 
     pub fn to_string(&self) -> Result<String, Box<dyn Error>> {
@@ -51,14 +51,14 @@ impl ResponseCache<'_> {
                     .write(true)
                     .create(true)
                     .truncate(true)
-                    .open(&self.file_path)?
+                    .open(self.file_path)?
             }
             false => OpenOptions::new()
                 .read(true)
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open(&self.file_path)?,
+                .open(self.file_path)?,
         };
 
         file.write_all(new_value.as_bytes())

@@ -65,7 +65,7 @@ impl Notifier<'_> {
         body: String,
     ) -> Result<(), Box<dyn Error>> {
         let owned_body = &body;
-        for email in self.emailer.emails.into_iter() {
+        for email in self.emailer.emails.iter() {
             let recipient_string = format!("{} <{}>", recipient, email);
             let message = Message::builder()
                 .from("Change detector: <changedet@cameron.wtf>".parse().unwrap())
@@ -88,7 +88,7 @@ impl Notifier<'_> {
     }
 
     fn new_mailer<'a>(
-        host: &String,
+        host: &str,
         uname: &String,
         pw: &String,
         emails: &'a Vec<String>,
@@ -96,17 +96,13 @@ impl Notifier<'_> {
         let smtp_creds = Credentials::new(uname.to_owned(), pw.to_owned());
 
         // Open a remote connection to gmail
-        let transport = SmtpTransport::relay(&host)?;
+        let transport = SmtpTransport::relay(host)?;
         let mailer = transport.credentials(smtp_creds).build();
 
         Ok(Emailer { mailer, emails })
     }
 
-    fn new_texter(
-        _id: &String,
-        _token: &String,
-        _numbers: &Vec<String>,
-    ) -> Result<Texter, Box<dyn Error>> {
+    fn new_texter(_id: &str, _token: &str, _numbers: &[String]) -> Result<Texter, Box<dyn Error>> {
         let _placeholder = "".to_owned();
         Ok(Texter { _placeholder })
     }

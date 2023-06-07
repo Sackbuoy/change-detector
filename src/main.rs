@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let config_file_path = "configuration.yaml";
     env_logger::init();
 
-    let config = Configuration::new(&config_file_path)?;
+    let config = Configuration::new(config_file_path)?;
 
     info!("Initializing webdriver");
     let mut web_driver = InternalWebDriver::start(&WebDrivers::Chrome).await?;

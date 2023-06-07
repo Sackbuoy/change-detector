@@ -32,7 +32,7 @@ impl Poller<'_> {
             certainty_level,
         };
 
-        return Ok(poller);
+        Ok(poller)
     }
 
     pub async fn poll(&mut self) -> Result<(), Box<dyn Error>> {
@@ -124,5 +124,5 @@ fn matches_past_responses(
         }
         i += 1;
     }
-    return true;
+    true
 }

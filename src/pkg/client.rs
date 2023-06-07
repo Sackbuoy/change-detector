@@ -80,7 +80,7 @@ impl Client<'_> {
 
         // close Webdriver Client
         match driver.quit().await {
-            Ok(()) => return Ok(body_text),
+            Ok(()) => Ok(body_text),
             Err(e) => {
                 error!("Failed to quit webdriver: {}", e.to_string());
                 Err(Box::new(e))
