@@ -54,6 +54,15 @@ impl Poller<'_> {
                 }
             };
 
+            // annoying check to remove more false positives
+            if !past_responses.is_empty()
+                && (new_response.len() as f32) < past_responses[0].len() as f32 * 0.75
+            {
+                continue;
+            }
+
+            info!("Response length: {}", new_response.len());
+
             past_responses.push(new_response.clone());
             if past_responses.len() as u64 > self.certainty_level {
                 past_responses.remove(0);
