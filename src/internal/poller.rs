@@ -11,7 +11,7 @@ pub struct Poller<'a> {
     response_cache: ResponseCache<'a>,
     notifier: Notifier<'a>,
     poll_interval: time::Duration,
-    certainty_level: u64,
+    certainty_level: u64, // DEPRECATED
 }
 
 impl Poller<'_> {
@@ -36,11 +36,6 @@ impl Poller<'_> {
     }
 
     pub async fn poll(&mut self) -> Result<(), Box<dyn Error>> {
-        // storing the past several responses because fuck
-        // i.e. If i find a change, I try again <certainty_level> times to make sure bc
-        // this page is unreliable af
-        let mut past_responses: Vec<String> = Vec::new();
-
         loop {
             // TODO: ticker instead of sleep
             thread::sleep(self.poll_interval);
@@ -53,20 +48,6 @@ impl Poller<'_> {
                     continue;
                 }
             };
-
-            // annoying check to remove more false positives
-            if !past_responses.is_empty()
-                && (new_response.len() as f32) < past_responses[0].len() as f32 * 0.75
-            {
-                continue;
-            }
-
-            info!("Response length: {}", new_response.len());
-
-            past_responses.push(new_response.clone());
-            if past_responses.len() as u64 > self.certainty_level {
-                past_responses.remove(0);
-            }
 
             match self.response_cache.is_empty() {
                 Ok(empty) => {
@@ -89,49 +70,43 @@ impl Poller<'_> {
                 }
             };
 
-            let change_matches_past = if change_detected {
-                matches_past_responses(
-                    &new_response,
-                    &past_responses,
-                    self.certainty_level as usize,
-                )
-            } else {
-                debug!("Change found, but could not verified within desired certainty level");
-                false
+            // if no change, skip to next poll
+            if !change_detected {
+                continue;
+            }
+
+            info!("Response length: {}", new_response.len());
+
+            // we found a change, so lets back off for a bit, then retry.
+            thread::sleep(2 * self.poll_interval);
+
+            let retry_response: String = match self.client.query().await {
+                Ok(val) => val,
+                Err(e) => {
+                    error!("Failed to connect to query page: {}", e.to_string());
+                    continue;
+                }
             };
 
-            // does response != cache and does response == past <certainty_level> responses
-            if change_matches_past {
-                info!("Change has been found within the desired certainty level");
-                self.response_cache.update(&new_response)?;
-                let body_string = format!("Visit {} for more details", self.client.url);
-                self.notifier.send_emails(
-                    &"recipient".to_string(),
-                    &"Change detector found an update".to_string(),
-                    body_string,
-                )?;
+            // we tried again then waited, if the two arent equal, skip this and continue
+            if retry_response != new_response {
+                continue;
             }
+
+            // if we've make it this far, then a change was found, and we've double checked it
+            // so its time to notify the recipients
+            self.response_cache.update(&new_response)?;
+            let body_string = format!(
+                "Visit {} for more details. \nOld: {:?}\nNew: {}",
+                self.client.url,
+                self.response_cache.to_string(),
+                new_response,
+            );
+            self.notifier.send_emails(
+                &"recipient".to_string(),
+                &"Change detector found an update".to_string(),
+                body_string,
+            )?;
         }
     }
-}
-
-fn matches_past_responses(
-    new_response: &String,
-    past_responses: &Vec<String>,
-    certainty_level: usize,
-) -> bool {
-    if past_responses.len() < certainty_level {
-        warn!("Change found before it could be verified at desired certainty level");
-        return false;
-    }
-
-    let mut i = 0;
-    while i < certainty_level {
-        if new_response != &past_responses[i] {
-            debug!("Response length: {}", new_response.len());
-            return false;
-        }
-        i += 1;
-    }
-    true
 }
