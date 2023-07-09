@@ -42,7 +42,12 @@ impl Poller<'_> {
 
             info!("polling...");
             let new_response: String = match self.client.query().await {
-                Ok(val) => val,
+                Ok(val) => {
+                    if val.is_empty() {
+                        continue;
+                    }
+                    val
+                }
                 Err(e) => {
                     error!("Failed to connect to query page: {}", e.to_string());
                     continue;
