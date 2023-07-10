@@ -36,7 +36,7 @@ impl Poller<'_> {
     }
 
     pub async fn poll(&mut self) -> Result<(), Box<dyn Error>> {
-        loop {
+        'pollingLoop: loop {
             // TODO: ticker instead of sleep
             thread::sleep(self.poll_interval);
 
@@ -83,30 +83,31 @@ impl Poller<'_> {
             info!("Response length: {}", new_response.len());
 
             // we found a change, so lets back off for a bit, then retry.
-            thread::sleep(2 * self.poll_interval);
+            // if we see the same result several times(certainty level) then we can be confident in the change
+            for i in 0..self.certainty_level {
+                // sleep on change, and progressively sleep longer and longer to ensure its not just
+                // overwhelming the webpage
+                let sleep_multiplier = 1 + i;
+                thread::sleep(self.poll_interval.mul_f32(sleep_multiplier as f32));
 
-            let retry_response: String = match self.client.query().await {
-                Ok(val) => val,
-                Err(e) => {
-                    error!("Failed to connect to query page: {}", e.to_string());
-                    continue;
+                let retry_response: String = match self.client.query().await {
+                    Ok(val) => val,
+                    Err(e) => {
+                        error!("Failed to connect to query page: {}", e.to_string());
+                        continue 'pollingLoop;
+                    }
+                };
+
+                // we tried again then waited, if the two arent equal, skip this and continue
+                if retry_response != new_response {
+                    continue 'pollingLoop;
                 }
-            };
-
-            // we tried again then waited, if the two arent equal, skip this and continue
-            if retry_response != new_response {
-                continue;
             }
 
             // if we've make it this far, then a change was found, and we've double checked it
             // so its time to notify the recipients
             self.response_cache.update(&new_response)?;
-            let body_string = format!(
-                "Visit {} for more details. \nOld: {:?}\nNew: {}",
-                self.client.url,
-                self.response_cache.to_string(),
-                new_response,
-            );
+            let body_string = format!("Visit {} for more details", self.client.url,);
             self.notifier.send_emails(
                 &"recipient".to_string(),
                 &"Change detector found an update".to_string(),
