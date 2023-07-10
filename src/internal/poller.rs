@@ -80,7 +80,7 @@ impl Poller<'_> {
                 continue;
             }
 
-            info!("Response length: {}", new_response.len());
+            info!("Change found. Response length: {}", new_response.len());
 
             // we found a change, so lets back off for a bit, then retry.
             // if we see the same result several times(certainty level) then we can be confident in the change
@@ -90,6 +90,11 @@ impl Poller<'_> {
                 let sleep_multiplier = 1 + i;
                 thread::sleep(self.poll_interval.mul_f32(sleep_multiplier as f32));
 
+                info!(
+                    "Checking again to achieve desired level of certainty. Pass {}/{}",
+                    i + 1,
+                    self.certainty_level
+                );
                 let retry_response: String = match self.client.query().await {
                     Ok(val) => val,
                     Err(e) => {
@@ -100,14 +105,16 @@ impl Poller<'_> {
 
                 // we tried again then waited, if the two arent equal, skip this and continue
                 if retry_response != new_response {
+                    warn!("Change found is not consistent. Ignoring the difference for now");
                     continue 'pollingLoop;
                 }
             }
 
             // if we've make it this far, then a change was found, and we've double checked it
             // so its time to notify the recipients
+            info!("A difference has been found within desired certainty. Updating cache and notifying recipients");
             self.response_cache.update(&new_response)?;
-            let body_string = format!("Visit {} for more details", self.client.url,);
+            let body_string = format!("Visit {} for more details", self.client.url);
             self.notifier.send_emails(
                 &"recipient".to_string(),
                 &"Change detector found an update".to_string(),
