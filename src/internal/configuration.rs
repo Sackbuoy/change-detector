@@ -10,6 +10,7 @@ pub struct Configuration {
     pub alerting: AlertingConfig,
     pub poll_interval: u64,
     pub certainty_level: u64,
+    pub cache_file_dir: String,
 }
 
 // TODO: figure out how to default these values

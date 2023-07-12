@@ -17,12 +17,12 @@ pub struct Poller<'a> {
 impl Poller<'_> {
     pub fn new<'a>(
         client: &'a mut Client<'a>,
-        cache_file_path: &'a String,
+        cache_file_dir: &'a String,
         notifier: Notifier<'a>,
         poll_interval: time::Duration,
         certainty_level: u64,
     ) -> Result<Poller<'a>, Box<dyn Error>> {
-        let response_cache = new_response_cache(cache_file_path)?;
+        let response_cache = new_response_cache(cache_file_dir)?;
 
         let poller = Poller {
             client,

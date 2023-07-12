@@ -29,10 +29,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let notifier = Notifier::new(&config.alerting)?;
 
     // create poller that will call the client
-    let cache_file_path = "current.html".to_owned();
     let mut poller = Poller::new(
         &mut poll_client,
-        &cache_file_path,
+        &config.cache_file_dir,
         notifier,
         Duration::from_secs(config.poll_interval),
         config.certainty_level,
